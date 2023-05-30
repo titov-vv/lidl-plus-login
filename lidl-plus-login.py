@@ -27,8 +27,8 @@ class appDataHanlder(QWebEngineUrlSchemeHandler):
     def requestStarted(self, job: QWebEngineUrlRequestJob) -> None:
         url = job.requestUrl().url()
         params = dict(parse.parse_qsl(parse.urlsplit(url).query))
+        job.fail(QWebEngineUrlRequestJob.Error.NoError)   # Stop processing but without an error
         self.data_received.emit(params)  # Dict contains 'code', 'scope', 'state' and 'session_state' elements
-        job.redirect("about:blank")
 
 # ----------------------------------------------------------------------------------------------------------------------
 class MainWindow(QMainWindow):
@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
         # Create scheme, handler and assign it to web-profile that is used for browser widget
         self.app_lidl_uri_scheme = QWebEngineUrlScheme(appDataHanlder.scheme)
         self.app_lidl_uri_scheme.setSyntax(QWebEngineUrlScheme.Syntax.Path)
-        self.app_lidl_uri_scheme.setFlags(QWebEngineUrlScheme.Flag.ContentSecurityPolicyIgnored)
+        self.app_lidl_uri_scheme.setFlags(QWebEngineUrlScheme.Flag.ContentSecurityPolicyIgnored | QWebEngineUrlScheme.Flag.LocalAccessAllowed)
         QWebEngineUrlScheme.registerScheme(self.app_lidl_uri_scheme)
         self.app_lidl_uri_handler = appDataHanlder(self)
         self.app_lidl_uri_handler.data_received.connect(self.processResponse)
@@ -89,7 +89,11 @@ class MainWindow(QMainWindow):
     def processResponse(self, params: dict):
         # Show right UI elements
         self.browser.setVisible(False)
+        self.text_box.clear()
         self.text_box.setVisible(True)
+        if 'code' not in params:
+            self.text_box.appendPlainText("ERROR: no auth code in callback URI")
+            return
         # Get Auth token and display it
         s = requests.Session()
         s.headers["Authorization"] = "Basic TGlkbFBsdXNOYXRpdmVDbGllbnQ6c2VjcmV0"
@@ -101,7 +105,6 @@ class MainWindow(QMainWindow):
             "code_verifier": self.verifier
         }
         response = s.post("https://accounts.lidl.com/connect/token", data=data)
-        self.text_box.clear()
         self.text_box.appendPlainText(f"Status code: {response.status_code}")
         self.text_box.appendPlainText(f"Result: {response.text}")
 
