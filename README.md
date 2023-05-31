@@ -9,6 +9,8 @@ Required imports are listed in the beginning of the script.
 You may simply run the script if you have dependencies satisfied:  
 ``python lidl-plus-login.py``
 
+*Script has Portugal country and language hardcoded, you may easily change it to another country (you need to replace 'PT' with other relevant value)*
+
 ## Result
 
 You will get following JSON result after successful login:
